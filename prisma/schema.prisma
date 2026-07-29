@@ -1,0 +1,141 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  EMPLOYEE
+}
+
+enum LeadStatus {
+  NEW
+  CALLED_NO_ANSWER
+  CALLED_INTERESTED
+  CALLED_NOT_INTERESTED
+  FOLLOW_UP_LATER
+  CONFIRMED
+  CANCELLED
+  EXPIRED
+}
+
+enum CourierStatus {
+  NOT_SENT
+  PENDING
+  SENDING
+  SENT
+  FAILED
+  DELIVERED
+  RETURNED
+}
+
+enum BatchStatus {
+  PENDING
+  PROCESSING
+  DONE
+  FAILED
+}
+
+model User {
+  id String @id @default(cuid())
+  name String
+  email String @unique
+  phone String?
+  passwordHash String
+  role Role @default(EMPLOYEE)
+  active Boolean @default(true)
+  createdAt DateTime @default(now())
+  assignedLeads Lead[] @relation("AssignedTo")
+  lockedLeads   Lead[] @relation("LockedBy")
+  callLogs CallLog[]
+  priceChanges PriceChangeLog[]
+  uploadedBatches UploadBatch[]
+}
+
+model Customer {
+  id String @id @default(cuid())
+  name String
+  phone String @unique
+  address String?
+  oldOrderProduct String?
+  oldOrderDate DateTime?
+  oldOrderAmount Float?
+  oldOrderQty Int?
+  extraNote String?
+  createdAt DateTime @default(now())
+  leads Lead[]
+}
+
+model UploadBatch {
+  id String @id @default(cuid())
+  fileName String
+  status BatchStatus @default(PENDING)
+  totalRows Int @default(0)
+  processedRows Int @default(0)
+  skippedRows Int @default(0)
+  errorLog String?
+  uploadedBy User @relation(fields: [uploadedById], references: [id])
+  uploadedById String
+  createdAt DateTime @default(now())
+}
+
+model Lead {
+  id String @id @default(cuid())
+  customer Customer @relation(fields: [customerId], references: [id])
+  customerId String
+  assignedTo User? @relation("AssignedTo", fields: [assignedToId], references: [id])
+  assignedToId String?
+  lockedBy User? @relation("LockedBy", fields: [lockedById], references: [id])
+  lockedById String?
+  lockedAt DateTime?
+  status LeadStatus @default(NEW)
+  courierStatus CourierStatus @default(NOT_SENT)
+  priority Int @default(0)
+  productPitched String?
+  confirmedAmount Float?
+  confirmedAt DateTime?
+  followUpAt DateTime?
+  courierConsignmentId String?
+  courierInvoice String?
+  courierAttempt Int @default(0)
+  batchId String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  callLogs CallLog[]
+  priceChanges PriceChangeLog[]
+
+  @@index([status, lockedById])
+  @@index([assignedToId, status])
+  @@index([followUpAt])
+  @@index([courierStatus])
+  @@index([priority, createdAt])
+}
+
+model CallLog {
+  id String @id @default(cuid())
+  lead Lead @relation(fields: [leadId], references: [id])
+  leadId String
+  employee User @relation(fields: [employeeId], references: [id])
+  employeeId String
+  statusAtCall LeadStatus
+  productPitched String?
+  note String?
+  createdAt DateTime @default(now())
+  @@index([leadId])
+}
+
+model PriceChangeLog {
+  id String @id @default(cuid())
+  lead Lead @relation(fields: [leadId], references: [id])
+  leadId String
+  changedBy User @relation(fields: [changedById], references: [id])
+  changedById String
+  oldAmount Float?
+  newAmount Float
+  createdAt DateTime @default(now())
+  @@index([leadId])
+}
