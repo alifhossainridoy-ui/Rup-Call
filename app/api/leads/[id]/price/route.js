@@ -6,7 +6,7 @@ import { prisma } from '@/lib/prisma.js';
 export async function PATCH(request, { params }) {
   const session = await getServerSession(authOptions);
 
-  if (!session || session.user.role !== 'EMPLOYEE') {
+  if (!session || !['EMPLOYEE', 'ADMIN'].includes(session.user.role)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
   }
 
@@ -35,8 +35,8 @@ export async function PATCH(request, { params }) {
       return NextResponse.json({ error: 'Lead not found' }, { status: 404 });
     }
 
-    // Verify ownership (locked by or assigned to session user)
-    if (lead.lockedById !== session.user.id && lead.assignedToId !== session.user.id) {
+    // Verify ownership for EMPLOYEE (locked by or assigned to); ADMIN has full access
+    if (session.user.role === 'EMPLOYEE' && lead.lockedById !== session.user.id && lead.assignedToId !== session.user.id) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
