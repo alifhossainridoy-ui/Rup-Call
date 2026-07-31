@@ -100,8 +100,11 @@ model Lead {
   confirmedAt DateTime?
   followUpAt DateTime?
   courierConsignmentId String?
+  courierTrackingCode String?
   courierInvoice String?
   courierAttempt Int @default(0)
+  courierError String?
+  courierSentAt DateTime?
   batchId String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

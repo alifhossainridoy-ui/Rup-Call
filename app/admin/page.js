@@ -180,6 +180,39 @@ export default function AdminPage() {
     CANCELLED: { text: '#6b6b6b', bg: '#ECECEC' },
   };
 
+  const courierColors = {
+    NOT_SENT: { text: '#8B7480', bg: '#F1EBEE' },
+    PENDING: { text: '#8A5A00', bg: '#FBEBD0' },
+    SENDING: { text: '#8A5A00', bg: '#FBEBD0' },
+    SENT: { text: '#1F6D6D', bg: '#DDF0EF' },
+    DELIVERED: { text: '#1F6D46', bg: '#DCF3E6' },
+    FAILED: { text: '#99323B', bg: '#FBE1E3' },
+    RETURNED: { text: '#99323B', bg: '#FBE1E3' },
+  };
+
+  const courierLabels = {
+    NOT_SENT: 'পাঠানো হয়নি',
+    PENDING: 'অপেক্ষমাণ',
+    SENDING: 'পাঠানো হচ্ছে',
+    SENT: 'পাঠানো হয়েছে',
+    DELIVERED: 'ডেলিভার্ড',
+    FAILED: 'ব্যর্থ',
+    RETURNED: 'রিটার্ন',
+  };
+
+  const handleCourierSync = async () => {
+    toast('সিঙ্ক শুরু হচ্ছে...', 'info');
+    try {
+      const res = await fetch('/api/admin/courier-sync', { method: 'POST' });
+      if (!res.ok) throw new Error('Sync failed');
+      const data = await res.json();
+      toast(`${data.updated} লিড আপডেট হয়েছে`, 'success');
+      loadStats();
+    } catch (err) {
+      toast('সিঙ্ক ব্যর্থ', 'error');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -199,46 +232,87 @@ export default function AdminPage() {
 
         {/* Stats Cards */}
         {stats && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-            <div className="bg-white p-6 rounded-lg shadow-sm">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">মোট লিড</p>
-                  <p className="text-3xl font-bold text-gray-900">{stats.totalLeads}</p>
+          <div className="space-y-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="bg-white p-6 rounded-lg shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">মোট লিড</p>
+                    <p className="text-3xl font-bold text-gray-900">{stats.totalLeads}</p>
+                  </div>
+                  <BarChart3 className="text-blue-600" size={28} />
                 </div>
-                <BarChart3 className="text-blue-600" size={28} />
+              </div>
+
+              <div className="bg-white p-6 rounded-lg shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">গ্রাহক</p>
+                    <p className="text-3xl font-bold text-gray-900">{stats.totalCustomers}</p>
+                  </div>
+                  <Users className="text-green-600" size={28} />
+                </div>
+              </div>
+
+              <div className="bg-white p-6 rounded-lg shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">নতুন</p>
+                    <p className="text-3xl font-bold text-gray-900">{stats.leadsByStatus.NEW || 0}</p>
+                  </div>
+                  <Briefcase className="text-purple-600" size={28} />
+                </div>
+              </div>
+
+              <div className="bg-white p-6 rounded-lg shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">নিশ্চিত</p>
+                    <p className="text-3xl font-bold text-gray-900">
+                      {stats.leadsByStatus.CONFIRMED || 0}
+                    </p>
+                  </div>
+                  <Briefcase className="text-green-600" size={28} />
+                </div>
               </div>
             </div>
 
-            <div className="bg-white p-6 rounded-lg shadow-sm">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">গ্রাহক</p>
-                  <p className="text-3xl font-bold text-gray-900">{stats.totalCustomers}</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-white p-6 rounded-lg shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">ডেলিভার্ড</p>
+                    <p className="text-3xl font-bold text-gray-900">{stats.leadsByStatus.DELIVERED || 0}</p>
+                  </div>
+                  <Briefcase className="text-green-600" size={28} />
                 </div>
-                <Users className="text-green-600" size={28} />
               </div>
-            </div>
 
-            <div className="bg-white p-6 rounded-lg shadow-sm">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">নতুন</p>
-                  <p className="text-3xl font-bold text-gray-900">{stats.leadsByStatus.NEW || 0}</p>
+              <div className="bg-white p-6 rounded-lg shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">রিটার্ন</p>
+                    <p className="text-3xl font-bold text-gray-900">{stats.leadsByStatus.RETURNED || 0}</p>
+                  </div>
+                  <Briefcase className="text-red-600" size={28} />
                 </div>
-                <Briefcase className="text-purple-600" size={28} />
               </div>
-            </div>
 
-            <div className="bg-white p-6 rounded-lg shadow-sm">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">নিশ্চিত</p>
-                  <p className="text-3xl font-bold text-gray-900">
-                    {stats.leadsByStatus.CONFIRMED || 0}
-                  </p>
+              <div className="bg-white p-6 rounded-lg shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">ডেলিভারি রেট</p>
+                    <p className="text-3xl font-bold text-gray-900">
+                      {(() => {
+                        const delivered = stats.leadsByStatus.DELIVERED || 0;
+                        const returned = stats.leadsByStatus.RETURNED || 0;
+                        const total = delivered + returned;
+                        return total === 0 ? '0%' : `${Math.round((delivered / total) * 100)}%`;
+                      })()}
+                    </p>
+                  </div>
+                  <BarChart3 className="text-orange-600" size={28} />
                 </div>
-                <Briefcase className="text-green-600" size={28} />
               </div>
             </div>
           </div>
@@ -286,25 +360,52 @@ export default function AdminPage() {
                 />
               </div>
 
-              <div className="flex flex-wrap gap-2">
-                {['NEW', 'CALLED_NO_ANSWER', 'CALLED_INTERESTED', 'FOLLOW_UP_LATER', 'CONFIRMED'].map((status) => (
-                  <button
-                    key={status}
-                    onClick={() =>
-                      setFilters((p) => ({
-                        ...p,
-                        status: p.status === status ? null : status,
-                      }))
-                    }
-                    className={`px-3 py-1 rounded-full text-sm font-medium transition ${
-                      filters.status === status
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    {status}
-                  </button>
-                ))}
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-gray-700">লিড স্ট্যাটাস</p>
+                <div className="flex flex-wrap gap-2">
+                  {['NEW', 'CALLED_NO_ANSWER', 'CALLED_INTERESTED', 'FOLLOW_UP_LATER', 'CONFIRMED'].map((status) => (
+                    <button
+                      key={status}
+                      onClick={() =>
+                        setFilters((p) => ({
+                          ...p,
+                          status: p.status === status ? null : status,
+                        }))
+                      }
+                      className={`px-3 py-1 rounded-full text-sm font-medium transition ${
+                        filters.status === status
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      {status}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-gray-700">কুরিয়ার স্ট্যাটাস</p>
+                <div className="flex flex-wrap gap-2">
+                  {['SENT', 'DELIVERED', 'FAILED', 'RETURNED'].map((status) => (
+                    <button
+                      key={status}
+                      onClick={() =>
+                        setFilters((p) => ({
+                          ...p,
+                          courierStatus: p.courierStatus === status ? null : status,
+                        }))
+                      }
+                      className={`px-3 py-1 rounded-full text-sm font-medium transition ${
+                        filters.courierStatus === status
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      {courierLabels[status]}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Employee Filter and Bulk Assign */}
@@ -347,6 +448,13 @@ export default function AdminPage() {
                 >
                   {selectedLeads.size > 0 ? `বরাদ্দ (${selectedLeads.size})` : 'বরাদ্দ'}
                 </button>
+
+                <button
+                  onClick={handleCourierSync}
+                  className="px-4 py-1 text-sm font-medium bg-green-600 text-white rounded-lg hover:bg-green-700"
+                >
+                  সিঙ্ক করুন
+                </button>
               </div>
             </div>
 
@@ -379,6 +487,7 @@ export default function AdminPage() {
                       <th className="px-4 py-3 text-left font-medium text-gray-700">নাম</th>
                       <th className="px-4 py-3 text-left font-medium text-gray-700">ফোন</th>
                       <th className="px-4 py-3 text-left font-medium text-gray-700">স্ট্যাটাস</th>
+                      <th className="px-4 py-3 text-left font-medium text-gray-700">কুরিয়ার</th>
                       <th className="px-4 py-3 text-left font-medium text-gray-700">বরাদ্দ</th>
                       <th className="px-4 py-3 text-left font-medium text-gray-700">পরিমাণ</th>
                     </tr>
@@ -418,6 +527,25 @@ export default function AdminPage() {
                             >
                               {lead.status}
                             </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            {(() => {
+                              const courierStatus = lead.courierStatus || 'NOT_SENT';
+                              const courierColor = courierColors[courierStatus];
+                              return (
+                                <div title={lead.courierError ? `Error: ${lead.courierError}` : ''}>
+                                  <span
+                                    style={{
+                                      color: courierColor.text,
+                                      backgroundColor: courierColor.bg,
+                                    }}
+                                    className="px-2 py-1 rounded-full text-xs font-medium"
+                                  >
+                                    {courierLabels[courierStatus] || courierStatus}
+                                  </span>
+                                </div>
+                              );
+                            })()}
                           </td>
                           <td className="px-4 py-3 text-gray-600">
                             {lead.assignedTo?.name || '-'}

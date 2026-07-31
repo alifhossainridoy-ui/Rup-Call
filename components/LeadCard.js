@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Phone, Pencil, Check, Clock, Trash2 } from 'lucide-react';
+import { Phone, Pencil, Check, Clock, Trash2, Truck, Loader2, Copy, AlertCircle } from 'lucide-react';
+import { useToast } from './Toast';
 
 const STATUS_COLORS = {
   NEW: { text: '#8B7480', bg: '#F1EBEE', ring: '#D9CBD1' },
@@ -30,6 +31,7 @@ export default function LeadCard({
   onRelease,
   showLockTime = true,
 }) {
+  const toast = useToast();
   const [showStatusPanel, setShowStatusPanel] = useState(false);
   const [editingPrice, setEditingPrice] = useState(false);
   const [newPrice, setNewPrice] = useState(lead.confirmedAmount || '');
@@ -38,6 +40,8 @@ export default function LeadCard({
   const [note, setNote] = useState('');
   const [followUpDate, setFollowUpDate] = useState('');
   const [loading, setLoading] = useState(false);
+  const [courierSending, setCourierSending] = useState(false);
+  const [showConsignmentId, setShowConsignmentId] = useState(false);
 
   const colors = STATUS_COLORS[lead.status] || STATUS_COLORS.NEW;
   const firstInitial = lead.customer?.name?.charAt(0).toUpperCase() || '?';
@@ -90,6 +94,30 @@ export default function LeadCard({
       } finally {
         setLoading(false);
       }
+    }
+  };
+
+  const handleCourierSend = async () => {
+    setCourierSending(true);
+    try {
+      const res = await fetch(`/api/leads/${lead.id}/courier`, {
+        method: 'POST',
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        toast(data.error || 'কুরিয়ার সেবা ব্যর্থ', 'error');
+        return;
+      }
+
+      const data = await res.json();
+      const msg = data.simulated ? 'কুরিয়ারে পাঠানো হয়েছে (টেস্ট মোড)' : 'কুরিয়ারে পাঠানো হয়েছে';
+      toast(msg, 'success');
+      window.location.reload();
+    } catch (err) {
+      toast('কিছু ত্রুটি ঘটেছে', 'error');
+    } finally {
+      setCourierSending(false);
     }
   };
 
@@ -192,6 +220,71 @@ export default function LeadCard({
           )}
         </div>
       </div>
+
+      {/* Courier Status */}
+      {lead.status === 'CONFIRMED' && (
+        <div className="bg-blue-50 rounded-lg p-3 mb-4 text-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold text-gray-700 mb-1">কুরিয়ার স্ট্যাটাস</p>
+              <p className="text-gray-900 font-medium">
+                {lead.courierStatus === 'NOT_SENT' ? 'পাঠানো হয়নি' :
+                 lead.courierStatus === 'PENDING' ? 'অপেক্ষমাণ' :
+                 lead.courierStatus === 'SENDING' ? 'পাঠানো হচ্ছে' :
+                 lead.courierStatus === 'SENT' ? 'পাঠানো হয়েছে' :
+                 lead.courierStatus === 'DELIVERED' ? 'ডেলিভার্ড' :
+                 lead.courierStatus === 'FAILED' ? 'ব্যর্থ' :
+                 lead.courierStatus === 'RETURNED' ? 'রিটার্ন' : lead.courierStatus}
+              </p>
+            </div>
+            {lead.courierStatus === 'FAILED' && lead.courierError && (
+              <div className="text-right text-xs" title={lead.courierError}>
+                <AlertCircle size={16} className="text-red-600 mb-1" />
+                <span className="text-red-600 font-medium">ত্রুটি</span>
+              </div>
+            )}
+          </div>
+
+          {/* Consignment ID display */}
+          {lead.courierConsignmentId && (
+            <div className="mt-2 p-2 bg-white rounded text-xs flex items-center justify-between">
+              <span className="text-gray-600">
+                {lead.courierConsignmentId}
+              </span>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(lead.courierConsignmentId);
+                  toast('কপি করা হয়েছে', 'success');
+                }}
+                className="text-blue-600 hover:text-blue-800"
+              >
+                <Copy size={14} />
+              </button>
+            </div>
+          )}
+
+          {/* Send button */}
+          {!['SENT', 'DELIVERED'].includes(lead.courierStatus) && (
+            <button
+              onClick={handleCourierSend}
+              disabled={courierSending || !lead.confirmedAmount}
+              className="w-full mt-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-semibold py-2 px-4 rounded-lg transition flex items-center justify-center gap-2"
+            >
+              {courierSending ? (
+                <>
+                  <Loader2 size={18} className="animate-spin" />
+                  পাঠানো হচ্ছে...
+                </>
+              ) : (
+                <>
+                  <Truck size={18} />
+                  কুরিয়ারে পাঠান
+                </>
+              )}
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Status Panel */}
       {showStatusPanel ? (
